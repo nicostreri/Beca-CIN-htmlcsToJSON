@@ -1,0 +1,34 @@
+{
+  "name": "htmlcs_to_json",
+  "version": "0.0.1",
+  "bin": {
+    "htmlcsToJSON": "./src/app.js"
+  },
+  "description": "Envoltorio para HTML CodeSniffer que permite ejecutarlo sobre CLI y obtener los resultados en JSON",
+  "main": "./src/app.js",
+  "scripts": {
+    "start": "nodejs ./src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicostreri/Beca-CIN-htmlcsToJSON.git"
+  },
+  "keywords": [
+    "HTMLCodeSniffer",
+    "CLI",
+    "accessibility",
+    "json"
+  ],
+  "author": "Nicolás Streri <nicolas@streri.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nicostreri/Beca-CIN-htmlcsToJSON/issues"
+  },
+  "homepage": "https://github.com/nicostreri/Beca-CIN-htmlcsToJSON#readme",
+  "dependencies": {
+    "commander": "^7.2.0",
+    "html_codesniffer": "^2.5.1",
+    "puppeteer": "^10.0.0"
+  }
+}
