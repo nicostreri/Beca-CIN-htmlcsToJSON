@@ -7,7 +7,7 @@ const { Command } = require("commander");
  * Execute HTML Code Sniffer on a page
  * @param {puppeteer.Page} page Page on which the accessibility test is run
  * @param {String} standardToRun Standard to test, it must be allowed by HTML CodeSniffer
- * @returns {Array} Results with: type, xpath to element, code, msg
+ * @returns {Promise} Returns a promise which resolves with the accesibility results with: type, xpath to element, code, msg
  */
 function runHTMLCodeSniffer(page, standardToRun) {
   return page.evaluate((standard) => {
