@@ -11,28 +11,116 @@ const { Command } = require("commander");
  */
 function runHTMLCodeSniffer(page, standardToRun) {
   return page.evaluate((standard) => {
-    function getElementXPath(element) {
-      //Based in https://stackoverflow.com/a/46781845/8087406
-      if (!element) return null;
+    function getQuerySelector(elem) {
+      //Based in https://stackoverflow.com/a/48081741/8087406
+      var element = elem;
+      var str = "";
 
-      if (element.id) {
-        return `//*[@id="${element.id}"]`;
-      } else if (element.tagName === "HEAD") {
-        return "/html/head";
-      } else if (element.tagName === "BODY") {
-        return "/html/body";
-      } else {
-        const sameTagSiblings = Array.from(
-          element.parentNode.childNodes
-        ).filter((e) => e.nodeName === element.nodeName);
-        const idx = sameTagSiblings.indexOf(element);
-        return (
-          getElementXPath(element.parentNode) +
-          "/" +
-          element.tagName.toLowerCase() +
-          (sameTagSiblings.length > 1 ? `[${idx + 1}]` : "")
-        );
+      if (element == window.document) return "website";
+
+      function loop(element) {
+        // stop here = element is body
+        if (document === element) {
+          str = str.replace(/^/, "");
+          str = str.replace(/\s/, "");
+          str = str.replace(/\s/g, " > ");
+          return str;
+        }
+        // stop here = element has ID
+        if (element.getAttribute("id")) {
+          str = str.replace(/^/, " #" + element.getAttribute("id"));
+          str = str.replace(/\s/, "");
+          str = str.replace(/\s/g, " > ");
+          return str;
+        }
+
+        // stop here = element is body
+        if (document.body === element) {
+          str = str.replace(/^/, " body");
+          str = str.replace(/\s/, "");
+          str = str.replace(/\s/g, " > ");
+          return str;
+        }
+
+        // concat all classes in "queryselector" style
+        if (element.getAttribute("class")) {
+          var elemClasses = ".";
+          elemClasses += element.getAttribute("class");
+          elemClasses = elemClasses.replace(/\s/g, ".");
+          elemClasses = elemClasses.replace(/^/g, " ");
+          var classNth = "";
+
+          // check if element class is the unique child
+          var childrens = element.parentNode.children;
+
+          if (childrens.length < 2) {
+            return;
+          }
+
+          var similarClasses = [];
+
+          for (let children of childrens) {
+            if (
+              element.getAttribute("class") == children.getAttribute("class")
+            ) {
+              similarClasses.push(children);
+            }
+          }
+
+          if (similarClasses.length > 1) {
+            for (var j = 0; j < similarClasses.length; j++) {
+              if (element === similarClasses[j]) {
+                j++;
+                classNth = ":nth-of-type(" + j + ")";
+                break;
+              }
+            }
+          }
+
+          str = str.replace(/^/, elemClasses + classNth);
+        } else {
+          // get nodeType
+          var name = element.nodeName;
+          name = name.toLowerCase();
+          var nodeNth = "";
+
+          var childrens = element.parentNode.children;
+
+          if (childrens.length > 2) {
+            var similarNodes = [];
+
+            for (let children of childrens) {
+              if (element.nodeName == children.nodeName) {
+                similarNodes.push(children);
+              }
+            }
+
+            if (similarNodes.length > 1) {
+              for (var j = 0; j < similarNodes.length; j++) {
+                if (element === similarNodes[j]) {
+                  j++;
+                  nodeNth = ":nth-of-type(" + j + ")";
+                  break;
+                }
+              }
+            }
+          }
+
+          str = str.replace(/^/, " " + name + nodeNth);
+        }
+
+        if (element.parentNode) {
+          loop(element.parentNode);
+        } else {
+          str = str.replace(/\s/g, " > ");
+          str = str.replace(/\s/, "");
+          return str;
+        }
       }
+
+      loop(element);
+
+      return str;
     }
     return new Promise((resolve, reject) => {
       HTMLCS.process(standard, window.document, (error) => {
@@ -41,13 +129,7 @@ function runHTMLCodeSniffer(page, standardToRun) {
         }
         resolve(
           HTMLCS.getMessages().map((message) => {
-            if (message.element == window.document) {
-              message.element = "website";
-              return message;
-            }
-            message.element = message.element
-              ? getElementXPath(message.element)
-              : "";
+            message.element = getQuerySelector(message.element);
             return message;
           })
         );
@@ -101,7 +183,7 @@ const options = program.opts();
 const url = options.url;
 const standard = options.standard;
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ dumpio: false });
   const page = await browser.newPage();
   await page.goto(url);
   await page.addScriptTag({
