@@ -18,7 +18,7 @@ function runHTMLCodeSniffer(page, standardToRun) {
 
       if (element == window.document) return "website";
 
-      function loop(element) {
+      function loop(element, stopInId = false) {
         // stop here = element is body
         if (document === element) {
           str = str.replace(/^/, "");
@@ -27,7 +27,7 @@ function runHTMLCodeSniffer(page, standardToRun) {
           return str;
         }
         // stop here = element has ID
-        if (element.getAttribute("id")) {
+        if (stopInId && element.getAttribute("id")) {
           str = str.replace(/^/, " #" + element.getAttribute("id"));
           str = str.replace(/\s/, "");
           str = str.replace(/\s/g, " > ");
@@ -110,7 +110,7 @@ function runHTMLCodeSniffer(page, standardToRun) {
         }
 
         if (element.parentNode) {
-          loop(element.parentNode);
+          loop(element.parentNode, true);
         } else {
           str = str.replace(/\s/g, " > ");
           str = str.replace(/\s/, "");
