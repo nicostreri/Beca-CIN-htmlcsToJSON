@@ -11,117 +11,57 @@ const { Command } = require("commander");
  */
 function runHTMLCodeSniffer(page, standardToRun) {
   return page.evaluate((standard) => {
-    function getQuerySelector(elem) {
-      //Based in https://stackoverflow.com/a/48081741/8087406
-      var element = elem;
-      var str = "";
+    /**
+     * Check if an element is an element node.
+     * @param {Node} element - An element to check.
+     * @returns {Boolean} True if the element is an element node.
+     */
+    function isElementNode(element) {
+      return element.nodeType === Node.ELEMENT_NODE;
+    }
 
-      if (element == window.document) return "website";
-
-      function loop(element, stopInId = false) {
-        // stop here = element is body
-        if (document === element) {
-          str = str.replace(/^/, "");
-          str = str.replace(/\s/, "");
-          str = str.replace(/\s/g, " > ");
-          return str;
-        }
-        // stop here = element has ID
-        if (stopInId && element.getAttribute("id")) {
-          str = str.replace(/^/, " #" + element.getAttribute("id"));
-          str = str.replace(/\s/, "");
-          str = str.replace(/\s/g, " > ");
-          return str;
-        }
-
-        // stop here = element is body
-        if (document.body === element) {
-          str = str.replace(/^/, " body");
-          str = str.replace(/\s/, "");
-          str = str.replace(/\s/g, " > ");
-          return str;
-        }
-
-        // concat all classes in "queryselector" style
-        if (element.getAttribute("class")) {
-          var elemClasses = ".";
-          elemClasses += element.getAttribute("class");
-          elemClasses = elemClasses.replace(/\s/g, ".");
-          elemClasses = elemClasses.replace(/^/g, " ");
-          var classNth = "";
-
-          // check if element class is the unique child
-          var childrens = element.parentNode.children;
-
-          if (childrens.length < 2) {
-            return;
-          }
-
-          var similarClasses = [];
-
-          for (let children of childrens) {
-            if (
-              element.getAttribute("class") == children.getAttribute("class")
-            ) {
-              similarClasses.push(children);
-            }
-          }
-
-          if (similarClasses.length > 1) {
-            for (var j = 0; j < similarClasses.length; j++) {
-              if (element === similarClasses[j]) {
-                j++;
-                classNth = ":nth-of-type(" + j + ")";
-                break;
-              }
-            }
-          }
-
-          str = str.replace(/^/, elemClasses + classNth);
-        } else {
-          // get nodeType
-          var name = element.nodeName;
-          name = name.toLowerCase();
-          var nodeNth = "";
-
-          var childrens = element.parentNode.children;
-
-          if (childrens.length > 2) {
-            var similarNodes = [];
-
-            for (let children of childrens) {
-              if (element.nodeName == children.nodeName) {
-                similarNodes.push(children);
-              }
-            }
-
-            if (similarNodes.length > 1) {
-              for (var j = 0; j < similarNodes.length; j++) {
-                if (element === similarNodes[j]) {
-                  j++;
-                  nodeNth = ":nth-of-type(" + j + ")";
-                  break;
-                }
-              }
-            }
-          }
-
-          str = str.replace(/^/, " " + name + nodeNth);
-        }
+    /**
+     * Get a CSS selector for an element.
+     * @param {HTMLElement} element - An element to get a selector for.
+     * @param {Array} parts
+     * @returns {String} Returns the CSS selector as a string.
+     */
+    function getElementSelector(element, parts = []) {
+      if (isElementNode(element)) {
+        parts.unshift(getElementIdentifier(element));
 
         if (element.parentNode) {
-          loop(element.parentNode, true);
-        } else {
-          str = str.replace(/\s/g, " > ");
-          str = str.replace(/\s/, "");
-          return str;
+          return getElementSelector(element.parentNode, parts);
         }
       }
-
-      loop(element);
-
-      return str;
+      return parts.join(" > ");
     }
+
+    /**
+     * CSS element identifier.
+     * @param {HTMLElement} element - An HTML element
+     * @returns {String} Returns the CSS element identifier as a string.
+     */
+    function getElementIdentifier(element) {
+      let identifier = element.tagName.toLowerCase();
+      if (!element.parentNode) {
+        return identifier;
+      }
+      const siblingElements = [...element.parentNode.childNodes].filter(
+        isElementNode
+      );
+      const hasSiblingsWithSameTag =
+        siblingElements.filter((e) => {
+          return e != element && e.tagName === element.tagName;
+        }).length > 0;
+
+      const nthChild = siblingElements.indexOf(element);
+      if (hasSiblingsWithSameTag && nthChild !== -1) {
+        identifier += `:nth-child(${nthChild + 1})`;
+      }
+      return identifier;
+    }
+
     return new Promise((resolve, reject) => {
       HTMLCS.process(standard, window.document, (error) => {
         if (error) {
@@ -129,7 +69,7 @@ function runHTMLCodeSniffer(page, standardToRun) {
         }
         resolve(
           HTMLCS.getMessages().map((message) => {
-            message.element = getQuerySelector(message.element);
+            message.element = getElementSelector(message.element) || "html";
             return message;
           })
         );
