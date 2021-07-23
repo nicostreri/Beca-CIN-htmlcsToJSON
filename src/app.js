@@ -123,7 +123,10 @@ const options = program.opts();
 const url = options.url;
 const standard = options.standard;
 (async () => {
-  const browser = await puppeteer.launch({ dumpio: false });
+  const browser = await puppeteer.launch({
+    dumpio: false,
+    args: ["--no-sandbox"],
+  });
   const page = await browser.newPage();
   await page.goto(url);
   await page.addScriptTag({
