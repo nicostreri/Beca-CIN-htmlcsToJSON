@@ -29,6 +29,6 @@
   "dependencies": {
     "commander": "^7.2.0",
     "html_codesniffer": "^2.5.1",
-    "puppeteer": "^10.0.0"
+    "puppeteer": "^19.2.0"
   }
 }
